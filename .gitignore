@@ -1,0 +1,33 @@
+# Android / Gradle
+.gradle/
+build/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+local.properties
+
+# Keystore — NEVER commit
+*.keystore
+*.jks
+keystore.properties
+
+# Test results
+app/build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+
+# Claude Code local settings (user-specific permissions)
+.claude/settings.local.json
