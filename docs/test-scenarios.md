@@ -225,7 +225,7 @@ Feature: Push-уведомления
   Scenario: Уведомление при заблокированном экране
     Given телефон заблокирован
     When наступает время приёма
-    Then уведомление отображается поверх локскрина (heads-up)
+    Then heads-up уведомление всплывает поверх локскрина (visibility = PUBLIC в Notification Channel)
 
   # Error Handling
   Scenario: Повтор через 30 минут при отсутствии реакции

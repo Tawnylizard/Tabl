@@ -4,12 +4,12 @@
 
 ---
 
-### Algorithm 1: Планирование будильника
+### Algorithm 1: Планирование push-уведомления через WorkManager
 
 ```
-FUNCTION scheduleNextAlarm(medicationId, scheduleId):
+FUNCTION scheduleNextNotification(medicationId, scheduleId):
   INPUT: medicationId: Long, scheduleId: Long
-  OUTPUT: Unit (будильник зарегистрирован в AlarmManager)
+  OUTPUT: Unit (WorkManager задача поставлена в очередь)
 
   schedule = db.schedules.findById(scheduleId)
   medication = db.medications.findById(medicationId)
@@ -18,19 +18,25 @@ FUNCTION scheduleNextAlarm(medicationId, scheduleId):
   IF schedule.endDate != null AND today > schedule.endDate: RETURN
   
   nextTriggerTime = calculateNextTrigger(schedule)
+  IF nextTriggerTime == null: RETURN
   
-  IF nextTriggerTime == null: RETURN  // расписание истекло
+  delayMillis = nextTriggerTime - currentTimestamp()
   
-  alarmIntent = createAlarmIntent(medicationId, scheduleId, nextTriggerTime)
-  alarmManager.setExactAndAllowWhileIdle(
-    type = RTC_WAKEUP,
-    triggerAtMillis = nextTriggerTime,
-    pendingIntent = alarmIntent
+  workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
+    .setInitialDelay(delayMillis, MILLISECONDS)
+    .setInputData(workDataOf(
+      "medicationId" to medicationId,
+      "scheduleId" to scheduleId,
+      "scheduledAt" to nextTriggerTime
+    ))
+    .addTag("med_${scheduleId}")
+    .build()
+  
+  workManager.enqueueUniqueWork(
+    uniqueName = "reminder_${scheduleId}",
+    existingWorkPolicy = REPLACE,
+    request = workRequest
   )
-  
-  db.pendingAlarms.upsert(PendingAlarm(
-    medicationId, scheduleId, nextTriggerTime
-  ))
 
 COMPLEXITY: O(1)
 ```
@@ -74,53 +80,68 @@ COMPLEXITY: O(7) = O(1)
 
 ---
 
-### Algorithm 3: Обработка срабатывания будильника
+### Algorithm 3: Показ heads-up push-уведомления (MedicationReminderWorker)
 
 ```
-FUNCTION onAlarmTriggered(medicationId, scheduleId, scheduledTime):
-  INPUT: параметры из AlarmManager Intent
-  OUTPUT: отображён экран подтверждения
+FUNCTION doWork(medicationId, scheduleId, scheduledTime):
+  INPUT: параметры из WorkManager InputData
+  OUTPUT: показано heads-up уведомление с кнопками действий
 
   medication = db.medications.findById(medicationId)
   
   IF medication == null OR medication.isActive == false:
-    RETURN  // лекарство удалено/приостановлено
+    RETURN Result.success()  // лекарство удалено/приостановлено
   
-  // Создать лог со статусом SNOOZED (будет обновлён)
+  // Создать лог
   logId = db.logs.insert(MedicationLog(
     medicationId = medicationId,
     scheduleId = scheduleId,
     scheduledAt = scheduledTime,
-    status = SNOOZED,
+    status = MISSED,  // будет обновлён при действии пользователя
     snoozeCount = 0
   ))
   
-  // Показать полноэкранный Intent
-  showFullScreenAlarmActivity(medicationId, scheduleId, logId, scheduledTime)
+  // Собрать PendingIntent для каждой кнопки
+  takenIntent  = broadcastPendingIntent(ACTION_TAKEN,  logId, medicationId, scheduleId)
+  snoozeIntent = broadcastPendingIntent(ACTION_SNOOZE, logId, medicationId, scheduleId)
+  skipIntent   = broadcastPendingIntent(ACTION_SKIP,   logId, medicationId, scheduleId)
   
-  // Запустить звук с FLAG_INSISTENT (повторяется непрерывно)
-  audioManager.startAlarmSound(flags = FLAG_INSISTENT)
+  // Построить уведомление
+  notification = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
+    .setContentTitle(medication.name)
+    .setContentText("${medication.dose ?: ""} — время принять")
+    .setPriority(PRIORITY_HIGH)        // heads-up
+    .setAutoCancel(true)
+    .addAction("✅ Принял", takenIntent)
+    .addAction("⏰ Снуз",   snoozeIntent)
+    .addAction("✗ Пропустить", skipIntent)
+    .setContentIntent(openMainActivityIntent(medicationId))
+    .build()
   
-  // Запланировать авто-пропуск через AUTO_MISS_MINUTES (по умолчанию 60 мин)
-  scheduleAutoMiss(logId, scheduledTime + AUTO_MISS_MINUTES)
+  notificationManager.notify(scheduleId.toInt(), notification)
+  
+  // Запланировать авто-повтор через REPEAT_MINUTES если нет ответа
+  scheduleRepeatIfNoAction(logId, scheduleId, medicationId, repeatCount = 0)
+  
+  RETURN Result.success()
 
-SIDE EFFECTS: звук, вибрация, показ Activity
+SIDE EFFECTS: показ уведомления, запись лога
 ```
 
 ---
 
-### Algorithm 4: Подтверждение приёма пользователем
+### Algorithm 4: Обработка действия из уведомления (NotificationActionReceiver)
 
 ```
-FUNCTION onUserAction(action: UserAction, logId: Long, medicationId: Long):
-  INPUT: action = TAKEN | SNOOZED(minutes) | SKIPPED
-  OUTPUT: обновлён лог, остановлен будильник, запланирован следующий
+FUNCTION onUserAction(action: UserAction, logId: Long, medicationId: Long, scheduleId: Long):
+  INPUT: action = TAKEN | SNOOZED(minutes) | SKIPPED  (из BroadcastReceiver)
+  OUTPUT: обновлён лог, уведомление убрано, запланировано следующее
 
-  // Остановить звук и вибрацию
-  audioManager.stopAlarmSound()
+  // Убрать уведомление
+  notificationManager.cancel(scheduleId.toInt())
   
-  // Отменить авто-пропуск
-  cancelAutoMiss(logId)
+  // Отменить авто-повтор
+  workManager.cancelUniqueWork("repeat_${logId}")
   
   log = db.logs.findById(logId)
   
@@ -137,16 +158,24 @@ FUNCTION onUserAction(action: UserAction, logId: Long, medicationId: Long):
     
     CASE SNOOZED(minutes):
       IF log.snoozeCount >= settings.maxSnoozeCount:
-        // Достигнут лимит снузов — отмечаем как пропущено
         db.logs.update(log.copy(status = SKIPPED, actionAt = now))
       ELSE:
         db.logs.update(log.copy(
           status = SNOOZED,
           snoozeCount = log.snoozeCount + 1
         ))
-        // Перепланировать будильник через N минут
-        snoozeTime = currentTimestamp() + minutes * 60_000
-        alarmManager.setExactAndAllowWhileIdle(RTC_WAKEUP, snoozeTime, ...)
+        // Поставить в очередь Worker со снузом
+        snoozeWork = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
+          .setInitialDelay(minutes.toLong(), MINUTES)
+          .setInputData(workDataOf(
+            "medicationId" to medicationId,
+            "scheduleId" to scheduleId,
+            "scheduledAt" to log.scheduledAt,
+            "isSnooze" to true
+          ))
+          .addTag("snooze_${logId}")
+          .build()
+        workManager.enqueueUniqueWork("snooze_${logId}", REPLACE, snoozeWork)
     
     CASE SKIPPED:
       db.logs.update(log.copy(
@@ -154,12 +183,9 @@ FUNCTION onUserAction(action: UserAction, logId: Long, medicationId: Long):
         actionAt = currentTimestamp()
       ))
   
-  // Запланировать следующий обычный будильник
+  // Запланировать следующее обычное уведомление
   IF action != SNOOZED:
-    scheduleNextAlarm(medicationId, log.scheduleId)
-  
-  // Закрыть экран подтверждения
-  closeAlarmActivity()
+    scheduleNextNotification(medicationId, log.scheduleId)
 ```
 
 ---
@@ -210,8 +236,8 @@ FUNCTION onBootCompleted():
           status = MISSED
         ))
       
-      // Запланировать следующий
-      scheduleNextAlarm(medication.id, schedule.id)
+      // Запланировать следующее
+      scheduleNextNotification(medication.id, schedule.id)
 
 COMPLEXITY: O(medications × schedules)
 ```
@@ -224,13 +250,15 @@ COMPLEXITY: O(medications × schedules)
 stateDiagram-v2
     [*] --> Scheduled : scheduleNextAlarm()
 
-    Scheduled --> Triggered : AlarmManager fires
-    Triggered --> AwaitingConfirmation : showFullScreenActivity()
+    Scheduled --> Triggered : WorkManager fires
+    Triggered --> NotificationShown : notificationManager.notify()
 
-    AwaitingConfirmation --> Taken : user taps "Принял"
-    AwaitingConfirmation --> Snoozed : user taps "Снуз"
-    AwaitingConfirmation --> Skipped : user taps "Пропустить"
-    AwaitingConfirmation --> Missed : AUTO_MISS timeout (60 min)
+    NotificationShown --> Taken : user taps "Принял"
+    NotificationShown --> Snoozed : user taps "Снуз"
+    NotificationShown --> Skipped : user taps "Пропустить"
+    NotificationShown --> Repeated : no action after 30 min (max 2x)
+    Repeated --> NotificationShown : repeat notification shown
+    Repeated --> Missed : max repeats reached, notification dismissed
 
     Snoozed --> AwaitingConfirmation : snooze timer fires
     Snoozed --> Skipped : maxSnoozeCount reached

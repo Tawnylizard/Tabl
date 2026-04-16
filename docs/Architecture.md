@@ -15,14 +15,12 @@ graph TB
     subgraph UI["UI Layer (Compose)"]
         A[HomeScreen] 
         B[AddMedicationScreen]
-        C[AlarmActivity]
         D[HistoryScreen]
         E[SettingsScreen]
     end
 
     subgraph Domain["Domain Layer"]
         F[MedicationViewModel]
-        G[AlarmViewModel]
         H[HistoryViewModel]
         I[AlarmScheduler]
     end
@@ -39,27 +37,23 @@ graph TB
     end
 
     subgraph System["Android System"]
-        O[AlarmManager]
+        O[WorkManager]
         P[NotificationManager]
-        Q[AudioManager]
     end
 
     A --> F
     B --> F
-    C --> G
     D --> H
     E --> L
     F --> J
     F --> I
-    G --> J
-    G --> K
     H --> K
     I --> O
     J --> M
     K --> M
     L --> N
-    G --> P
-    G --> Q
+    F --> I
+    F --> J
 ```
 
 ---
@@ -72,7 +66,6 @@ graph TB
 |-------|----------|
 | `HomeScreen` | Список лекарств с карточками. FAB для добавления. |
 | `AddMedicationScreen` | Форма: название, доза, цвет, запас. Вложенный `ScheduleForm`. |
-| `AlarmActivity` | Полноэкранный экран будильника. Запускается поверх локскрина. |
 | `HistoryScreen` | Лог приёмов с фильтрацией и процентом соблюдения. |
 | `SettingsScreen` | Звук, снуз, тема, язык. |
 
@@ -80,9 +73,8 @@ graph TB
 
 | Компонент | Описание |
 |-----------|----------|
-| `AlarmScheduler` | Управляет регистрацией/отменой будильников в AlarmManager. |
+| `NotificationScheduler` | Управляет регистрацией/отменой задач WorkManager. |
 | `MedicationViewModel` | Состояние списка лекарств, CRUD операции. |
-| `AlarmViewModel` | Обработка действий пользователя на экране будильника. |
 | `HistoryViewModel` | Агрегация логов, расчёт процента соблюдения. |
 
 ### Data Layer
@@ -97,10 +89,9 @@ graph TB
 
 | Компонент | Тип | Назначение |
 |-----------|-----|-----------|
-| `AlarmReceiver` | BroadcastReceiver | Принимает сигнал от AlarmManager, запускает AlarmActivity |
-| `BootReceiver` | BroadcastReceiver | BOOT_COMPLETED — восстановление будильников |
-| `AlarmActivity` | Activity | Полноэкранный экран подтверждения |
-| `AlarmService` | ForegroundService | Управляет звуком и вибрацией во время будильника |
+| `MedicationReminderWorker` | CoroutineWorker | Показывает push-уведомление в назначенное время |
+| `NotificationActionReceiver` | BroadcastReceiver | Принимает действия из уведомления (Принял/Снуз/Пропустить) |
+| `BootReceiver` | BroadcastReceiver | BOOT_COMPLETED — пересоздаёт WorkManager задачи |
 
 ---
 
@@ -116,7 +107,6 @@ graph TB
 | DI | Hilt | 2.51+ | Стандарт Android DI |
 | Async | Kotlin Coroutines + Flow | 1.8+ | Реактивные потоки данных |
 | Настройки | DataStore Preferences | 1.1+ | Замена SharedPreferences |
-| Будильники | AlarmManager | Android API | Точные системные будильники |
 | Фон | WorkManager | 2.9+ | Планирование, устойчивое к перезагрузке |
 | Тестирование | JUnit5, MockK, Espresso | — | Unit + Integration тесты |
 | Min SDK | API 26 | Android 8.0 | Охват 97%+ устройств |
@@ -164,31 +154,29 @@ CREATE INDEX idx_logs_medication_date
 
 ---
 
-## Alarm Architecture Detail
+## Notification Architecture Detail
 
 ```
 Scheduled time arrives
         ↓
-AlarmManager → AlarmReceiver (BroadcastReceiver)
+WorkManager fires MedicationReminderWorker
         ↓
-AlarmReceiver:
-  1. acquires WakeLock (30 sec)
-  2. starts AlarmService (ForegroundService)
-  3. launches AlarmActivity (FLAG_SHOW_WHEN_LOCKED | FLAG_TURN_SCREEN_ON)
+MedicationReminderWorker.doWork():
+  1. Build NotificationCompat:
+       - priority = PRIORITY_HIGH  (heads-up — всплывает поверх экрана)
+       - addAction("Принял",      NotificationActionReceiver, ACTION_TAKEN)
+       - addAction("Снуз",        NotificationActionReceiver, ACTION_SNOOZE)
+       - addAction("Пропустить",  NotificationActionReceiver, ACTION_SKIP)
+       - contentIntent = MainActivity PendingIntent (тап открывает приложение)
+  2. notificationManager.notify(scheduleId, notification)
         ↓
-AlarmService:
-  - plays alarm sound (AudioManager, STREAM_ALARM)
-  - FLAG_INSISTENT = repeats until stopped
-  - vibration pattern
+User sees heads-up notification (звук + вибрация через Notification Channel)
         ↓
-AlarmActivity:
-  - shows medication name, dose, time
-  - buttons: Принял / Снуз / Пропустить
-  - on user action → calls AlarmViewModel → stops AlarmService
-        ↓
-AlarmViewModel:
-  - updates MedicationLog
-  - calls AlarmScheduler.scheduleNext()
+NotificationActionReceiver.onReceive(action):
+  - ACTION_TAKEN   → log TAKEN, cancel notification, scheduleNext()
+  - ACTION_SNOOZE  → log SNOOZED, cancel notification, enqueue snooze Worker
+  - ACTION_SKIP    → log SKIPPED, cancel notification, scheduleNext()
+  - [no action]    → after 30 min repeat notification fires (max 2 times)
 ```
 
 ---
@@ -196,25 +184,18 @@ AlarmViewModel:
 ## Permissions Required
 
 ```xml
-<!-- Точные будильники (API 31+) -->
-<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-
-<!-- Пробуждение устройства -->
-<uses-permission android:name="android.permission.WAKE_LOCK" />
+<!-- Уведомления (API 33+) — запрос у пользователя при первом запуске -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 <!-- Восстановление после перезагрузки -->
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-<!-- Уведомления (API 33+) -->
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<!-- WorkManager требует для надёжного запуска в фоне -->
+<uses-permission android:name="android.permission.WAKE_LOCK" />
 
-<!-- Фоновый сервис -->
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-
-<!-- Игнорировать оптимизацию батареи (запрос у пользователя) -->
-<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 ```
+
+> WorkManager использует внутренний scheduling без `SCHEDULE_EXACT_ALARM` — меньше разрешений, меньше вероятность блокировки Xiaomi/Samsung Battery Optimization.
 
 ---
 
@@ -231,4 +212,4 @@ AlarmViewModel:
 
 Приложение offline-first, нет серверной части — масштабирование не требуется.  
 Room DB с SQLite эффективно обрабатывает тысячи записей истории.  
-AlarmManager ограничен системой: оптимально ≤500 активных будильников (реально у пользователя 1-20).
+WorkManager с OneTimeWorkRequest: каждое расписание — одна задача, практически без ограничений на количество.
