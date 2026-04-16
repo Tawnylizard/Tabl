@@ -55,4 +55,10 @@ class HistoryViewModel @Inject constructor(
 
     fun selectMedication(id: Long?) { _selectedMedId.value = id }
     fun setPeriod(days: Int) { _periodDays.value = days }
+
+    fun buildCsvContent(): String {
+        val currentLogs = logs.value
+        val medNames = medications.value.associate { it.id to it.name }
+        return com.app.tabl.domain.export.CsvExporter.buildCsv(currentLogs, medNames)
+    }
 }

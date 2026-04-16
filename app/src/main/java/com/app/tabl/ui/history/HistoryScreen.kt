@@ -1,18 +1,23 @@
 package com.app.tabl.ui.history
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.tabl.domain.model.LogStatus
 import com.app.tabl.domain.model.MedicationLog
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -22,11 +27,25 @@ fun HistoryScreen(
     onNavigateBack: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val medications by viewModel.medications.collectAsState()
     val logs by viewModel.logs.collectAsState()
     val compliance by viewModel.compliancePercent.collectAsState()
     val selectedMedId by viewModel.selectedMedicationId.collectAsState()
     val periodDays by viewModel.periodDays.collectAsState()
+
+    fun shareCsv() {
+        val csv = viewModel.buildCsvContent()
+        val exportDir = File(context.cacheDir, "exports").also { it.mkdirs() }
+        val file = File(exportDir, "tabl_history.csv").also { it.writeText(csv) }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Экспорт истории"))
+    }
 
     Scaffold(
         topBar = {
@@ -34,7 +53,14 @@ fun HistoryScreen(
                 title = { Text("История приёмов") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    }
+                },
+                actions = {
+                    if (logs.isNotEmpty()) {
+                        IconButton(onClick = ::shareCsv) {
+                            Icon(Icons.Default.Share, contentDescription = "Экспорт CSV")
+                        }
                     }
                 }
             )

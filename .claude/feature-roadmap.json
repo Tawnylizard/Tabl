@@ -80,7 +80,7 @@
       "title": "Виджет рабочего стола",
       "description": "AppWidget с ближайшим приёмом и кнопкой Принял",
       "priority": "could",
-      "status": "next",
+      "status": "done",
       "depends_on": ["F5"],
       "stories": []
     },
@@ -89,7 +89,7 @@
       "title": "Экспорт истории в CSV",
       "description": "Экспорт MedicationLog за выбранный период в CSV файл",
       "priority": "could",
-      "status": "next",
+      "status": "done",
       "depends_on": ["F5"],
       "stories": []
     }
