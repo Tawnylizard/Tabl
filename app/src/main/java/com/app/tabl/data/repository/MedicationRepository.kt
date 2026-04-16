@@ -1,5 +1,7 @@
 package com.app.tabl.data.repository
 
+import androidx.room.withTransaction
+import com.app.tabl.data.local.AppDatabase
 import com.app.tabl.data.local.dao.MedicationDao
 import com.app.tabl.data.local.dao.ScheduleDao
 import com.app.tabl.data.local.entity.toEntity
@@ -12,6 +14,7 @@ import javax.inject.Singleton
 
 @Singleton
 class MedicationRepository @Inject constructor(
+    private val db: AppDatabase,
     private val medicationDao: MedicationDao,
     private val scheduleDao: ScheduleDao
 ) {
@@ -25,12 +28,13 @@ class MedicationRepository @Inject constructor(
     suspend fun getMedicationById(id: Long): Medication? =
         medicationDao.getById(id)?.toDomain()
 
-    suspend fun saveMedication(medication: Medication, schedules: List<Schedule>): Long {
-        val medId = medicationDao.insert(medication.toEntity())
-        val entities = schedules.map { it.copy(medicationId = medId).toEntity() }
-        scheduleDao.insertAll(entities)
-        return medId
-    }
+    suspend fun saveMedication(medication: Medication, schedules: List<Schedule>): Long =
+        db.withTransaction {
+            val medId = medicationDao.insert(medication.toEntity())
+            val entities = schedules.map { it.copy(medicationId = medId).toEntity() }
+            scheduleDao.insertAll(entities)
+            medId
+        }
 
     suspend fun updateMedication(medication: Medication) {
         medicationDao.update(medication.toEntity())

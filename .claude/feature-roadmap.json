@@ -8,7 +8,7 @@
       "title": "Управление лекарствами",
       "description": "Добавление, редактирование, удаление, пауза лекарств (название, доза, цвет, запас)",
       "priority": "must",
-      "status": "next",
+      "status": "done",
       "depends_on": [],
       "stories": ["US-01", "US-02", "US-03"]
     },
@@ -17,7 +17,7 @@
       "title": "Расписание приёма",
       "description": "Настройка времени, дней недели, интервала, курса (startDate/endDate)",
       "priority": "must",
-      "status": "next",
+      "status": "done",
       "depends_on": ["F1"],
       "stories": ["US-04", "US-05"]
     },
@@ -26,7 +26,7 @@
       "title": "Push-уведомления",
       "description": "WorkManager + NotificationCompat PRIORITY_HIGH, повтор через 30 мин (макс. 2x), BOOT_COMPLETED recovery",
       "priority": "must",
-      "status": "next",
+      "status": "done",
       "depends_on": ["F2"],
       "stories": ["US-06", "US-07"]
     },
@@ -35,7 +35,7 @@
       "title": "Подтверждение из уведомления",
       "description": "Кнопки Принял/Снуз/Пропустить прямо в уведомлении, без открытия приложения",
       "priority": "must",
-      "status": "planned",
+      "status": "next",
       "depends_on": ["F3"],
       "stories": ["US-08"]
     },
@@ -44,7 +44,7 @@
       "title": "История приёмов",
       "description": "Лог событий, фильтрация, процент соблюдения TAKEN/(TAKEN+MISSED+SKIPPED)×100",
       "priority": "must",
-      "status": "planned",
+      "status": "next",
       "depends_on": ["F4"],
       "stories": ["US-09"]
     },
@@ -62,7 +62,7 @@
       "title": "Настройки приложения",
       "description": "Длительность снуза, макс. повторов, тема, язык",
       "priority": "should",
-      "status": "planned",
+      "status": "next",
       "depends_on": ["F3"],
       "stories": []
     },
