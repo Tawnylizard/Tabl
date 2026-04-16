@@ -53,7 +53,7 @@
       "title": "Счётчик таблеток",
       "description": "Авто-уменьшение при Принял, уведомление при достижении порога",
       "priority": "should",
-      "status": "next",
+      "status": "done",
       "depends_on": ["F4"],
       "stories": ["US-10"]
     },

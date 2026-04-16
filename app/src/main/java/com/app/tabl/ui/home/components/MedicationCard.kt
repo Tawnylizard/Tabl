@@ -61,7 +61,13 @@ fun MedicationCard(
                     Text(medication.dose, style = MaterialTheme.typography.bodySmall)
                 }
                 medication.stockCount?.let { stock ->
-                    Text("Запас: $stock шт.", style = MaterialTheme.typography.bodySmall)
+                    val isLow = medication.stockThreshold != null && stock <= medication.stockThreshold
+                    Text(
+                        text = if (isLow) "⚠ Запас: $stock шт." else "Запас: $stock шт.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isLow) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             Switch(
