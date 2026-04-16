@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/feature-context.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd /workspaces/Tabl && if git diff --quiet .claude/feature-roadmap.json docs/plans/ docs/features/ 2>/dev/null; then true; else git add .claude/feature-roadmap.json docs/plans/ docs/features/ && git commit -m \"chore: auto-update roadmap and plans\" --no-verify 2>/dev/null || true; fi'"
+          }
+        ]
+      }
+    ]
+  }
+}

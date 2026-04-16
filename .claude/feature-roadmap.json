@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "project": "Tabl",
+  "updated": "2026-04-16",
+  "features": [
+    {
+      "id": "F1",
+      "title": "Управление лекарствами",
+      "description": "Добавление, редактирование, удаление, пауза лекарств (название, доза, цвет, запас)",
+      "priority": "must",
+      "status": "next",
+      "depends_on": [],
+      "stories": ["US-01", "US-02", "US-03"]
+    },
+    {
+      "id": "F2",
+      "title": "Расписание приёма",
+      "description": "Настройка времени, дней недели, интервала, курса (startDate/endDate)",
+      "priority": "must",
+      "status": "next",
+      "depends_on": ["F1"],
+      "stories": ["US-04", "US-05"]
+    },
+    {
+      "id": "F3",
+      "title": "Push-уведомления",
+      "description": "WorkManager + NotificationCompat PRIORITY_HIGH, повтор через 30 мин (макс. 2x), BOOT_COMPLETED recovery",
+      "priority": "must",
+      "status": "next",
+      "depends_on": ["F2"],
+      "stories": ["US-06", "US-07"]
+    },
+    {
+      "id": "F4",
+      "title": "Подтверждение из уведомления",
+      "description": "Кнопки Принял/Снуз/Пропустить прямо в уведомлении, без открытия приложения",
+      "priority": "must",
+      "status": "planned",
+      "depends_on": ["F3"],
+      "stories": ["US-08"]
+    },
+    {
+      "id": "F5",
+      "title": "История приёмов",
+      "description": "Лог событий, фильтрация, процент соблюдения TAKEN/(TAKEN+MISSED+SKIPPED)×100",
+      "priority": "must",
+      "status": "planned",
+      "depends_on": ["F4"],
+      "stories": ["US-09"]
+    },
+    {
+      "id": "F6",
+      "title": "Счётчик таблеток",
+      "description": "Авто-уменьшение при Принял, уведомление при достижении порога",
+      "priority": "should",
+      "status": "planned",
+      "depends_on": ["F4"],
+      "stories": ["US-10"]
+    },
+    {
+      "id": "F7",
+      "title": "Настройки приложения",
+      "description": "Длительность снуза, макс. повторов, тема, язык",
+      "priority": "should",
+      "status": "planned",
+      "depends_on": ["F3"],
+      "stories": []
+    },
+    {
+      "id": "F8",
+      "title": "Тёмная тема",
+      "description": "Светлая / тёмная / системная тема через Material 3",
+      "priority": "could",
+      "status": "planned",
+      "depends_on": ["F1"],
+      "stories": []
+    },
+    {
+      "id": "F9",
+      "title": "Виджет рабочего стола",
+      "description": "AppWidget с ближайшим приёмом и кнопкой Принял",
+      "priority": "could",
+      "status": "planned",
+      "depends_on": ["F5"],
+      "stories": []
+    },
+    {
+      "id": "F10",
+      "title": "Экспорт истории в CSV",
+      "description": "Экспорт MedicationLog за выбранный период в CSV файл",
+      "priority": "could",
+      "status": "planned",
+      "depends_on": ["F5"],
+      "stories": []
+    }
+  ]
+}
