@@ -44,7 +44,7 @@
       "title": "История приёмов",
       "description": "Лог событий, фильтрация, процент соблюдения TAKEN/(TAKEN+MISSED+SKIPPED)×100",
       "priority": "must",
-      "status": "next",
+      "status": "done",
       "depends_on": ["F4"],
       "stories": ["US-09"]
     },
@@ -53,7 +53,7 @@
       "title": "Счётчик таблеток",
       "description": "Авто-уменьшение при Принял, уведомление при достижении порога",
       "priority": "should",
-      "status": "planned",
+      "status": "next",
       "depends_on": ["F4"],
       "stories": ["US-10"]
     },
@@ -80,7 +80,7 @@
       "title": "Виджет рабочего стола",
       "description": "AppWidget с ближайшим приёмом и кнопкой Принял",
       "priority": "could",
-      "status": "planned",
+      "status": "next",
       "depends_on": ["F5"],
       "stories": []
     },
@@ -89,7 +89,7 @@
       "title": "Экспорт истории в CSV",
       "description": "Экспорт MedicationLog за выбранный период в CSV файл",
       "priority": "could",
-      "status": "planned",
+      "status": "next",
       "depends_on": ["F5"],
       "stories": []
     }

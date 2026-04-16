@@ -4,23 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.tabl.data.repository.LogRepository
 import com.app.tabl.data.repository.MedicationRepository
+import com.app.tabl.domain.model.LogStatus
 import com.app.tabl.domain.model.Medication
 import com.app.tabl.domain.model.MedicationLog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
-
-data class HistoryUiState(
-    val medications: List<Medication> = emptyList(),
-    val selectedMedicationId: Long? = null,
-    val logs: List<MedicationLog> = emptyList(),
-    val compliancePercent: Int = 0,
-    val periodDays: Int = 7
-)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -48,16 +40,14 @@ class HistoryViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val compliancePercent: StateFlow<Int> = combine(_selectedMedId, _periodDays) { medId, days ->
-        medId to days
-    }.flatMapLatest { (medId, days) ->
-        flow {
-            if (medId == null) { emit(0); return@flow }
-            val to = System.currentTimeMillis()
-            val from = LocalDate.now().minusDays(days.toLong())
-                .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            emit(logRepository.getCompliancePercent(medId, from, to))
-        }
+    // Derived reactively from logs — updates whenever logs change
+    val compliancePercent: StateFlow<Int> = combine(logs, _selectedMedId) { logList, medId ->
+        if (medId == null) return@combine 0
+        val taken  = logList.count { it.status == LogStatus.TAKEN }
+        val missed = logList.count { it.status == LogStatus.MISSED }
+        val skipped = logList.count { it.status == LogStatus.SKIPPED }
+        val total = taken + missed + skipped
+        if (total == 0) 0 else taken * 100 / total
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val selectedMedicationId: StateFlow<Long?> = _selectedMedId.asStateFlow()
