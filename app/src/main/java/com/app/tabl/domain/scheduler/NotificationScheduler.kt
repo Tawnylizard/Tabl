@@ -85,6 +85,10 @@ class NotificationScheduler @Inject constructor(
         workManager.cancelUniqueWork("snooze_$logId")
     }
 
+    fun cancelRepeat(logId: Long) {
+        workManager.cancelUniqueWork("repeat_$logId")
+    }
+
     fun scheduleRepeatCheck(logId: Long, medicationId: Long, scheduleId: Long, scheduledAt: Long, repeatCount: Int) {
         val data = workDataOf(
             MedicationReminderWorker.KEY_MEDICATION_ID to medicationId,

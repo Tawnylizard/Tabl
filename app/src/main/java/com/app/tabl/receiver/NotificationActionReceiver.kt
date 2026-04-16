@@ -46,6 +46,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         notificationManager.cancel(scheduleId.toInt())
 
         scheduler.cancelSnooze(logId)
+        scheduler.cancelRepeat(logId)
 
         val now = System.currentTimeMillis()
 
@@ -69,7 +70,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         logRepository.updateLogStatus(logId, LogStatus.SKIPPED, now)
                         scheduler.scheduleNext(medicationId, scheduleId)
                     } else {
-                        logRepository.updateLogStatus(logId, LogStatus.SNOOZED, now)
+                        val newCount = log.snoozeCount + 1
+                        logRepository.updateLogSnoozed(logId, now, newCount)
                         val snoozeMinutes = settingsRepository.snoozeMinutes.first()
                         scheduler.scheduleSnooze(medicationId, scheduleId, logId, log.scheduledAt, snoozeMinutes)
                     }

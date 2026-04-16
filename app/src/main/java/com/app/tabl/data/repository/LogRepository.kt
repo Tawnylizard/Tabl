@@ -24,6 +24,10 @@ class LogRepository @Inject constructor(
         logDao.updateStatus(id, status, actionAt)
     }
 
+    suspend fun updateLogSnoozed(id: Long, actionAt: Long, newSnoozeCount: Int) {
+        logDao.updateStatusAndSnoozeCount(id, LogStatus.SNOOZED, actionAt, newSnoozeCount)
+    }
+
     fun getLogsForMedication(medicationId: Long, from: Long, to: Long): Flow<List<MedicationLog>> =
         logDao.getLogsForMedication(medicationId, from, to).map { list -> list.map { it.toDomain() } }
 

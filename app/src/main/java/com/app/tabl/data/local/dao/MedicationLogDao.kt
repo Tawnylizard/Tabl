@@ -29,6 +29,9 @@ interface MedicationLogDao {
     @Query("UPDATE medication_logs SET status = :status, action_at = :actionAt WHERE id = :id")
     suspend fun updateStatus(id: Long, status: LogStatus, actionAt: Long)
 
+    @Query("UPDATE medication_logs SET status = :status, action_at = :actionAt, snooze_count = :snoozeCount WHERE id = :id")
+    suspend fun updateStatusAndSnoozeCount(id: Long, status: LogStatus, actionAt: Long, snoozeCount: Int)
+
     @Query("SELECT COUNT(*) FROM medication_logs WHERE medication_id = :medicationId AND status = :status AND scheduled_at BETWEEN :from AND :to")
     suspend fun countByStatus(medicationId: Long, status: LogStatus, from: Long, to: Long): Int
 }
