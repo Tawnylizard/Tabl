@@ -20,7 +20,7 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun TablTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

@@ -62,7 +62,7 @@
       "title": "Настройки приложения",
       "description": "Длительность снуза, макс. повторов, тема, язык",
       "priority": "should",
-      "status": "next",
+      "status": "done",
       "depends_on": ["F3"],
       "stories": []
     },
@@ -71,7 +71,7 @@
       "title": "Тёмная тема",
       "description": "Светлая / тёмная / системная тема через Material 3",
       "priority": "could",
-      "status": "planned",
+      "status": "done",
       "depends_on": ["F1"],
       "stories": []
     },
