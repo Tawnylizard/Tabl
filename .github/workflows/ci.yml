@@ -123,10 +123,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run coverage
-        run: ./gradlew testDebugUnitTestCoverage --no-daemon
+        run: ./gradlew testDebugUnitTest createDebugUnitTestCoverageReport --no-daemon
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: app/build/reports/coverage/
+          path: app/build/reports/coverage/test/debug/
