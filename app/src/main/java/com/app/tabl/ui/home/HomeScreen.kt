@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -18,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.tabl.ui.home.components.MedicationCard
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,9 +29,18 @@ fun HomeScreen(
     onEditMedication: (Long) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenUpcoming: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val expiringSchedules by viewModel.expiringSchedules.collectAsState()
+
+    // Track which expiring schedules have been dismissed this session
+    var dismissedIds by remember { mutableStateOf(setOf<Long>()) }
+    val pendingExpiry = remember(expiringSchedules, dismissedIds) {
+        expiringSchedules.filterNot { it.schedule.id in dismissedIds }
+    }
+    val currentExpiry = pendingExpiry.firstOrNull()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -40,11 +52,46 @@ fun HomeScreen(
         }
     }
 
+    // Expiry dialog for the first pending expiring schedule
+    if (currentExpiry != null) {
+        val endDateStr = remember(currentExpiry) {
+            currentExpiry.schedule.endDate
+                ?.format(DateTimeFormatter.ofPattern("d MMMM", Locale.getDefault()))
+                ?: ""
+        }
+        AlertDialog(
+            onDismissRequest = { dismissedIds = dismissedIds + currentExpiry.schedule.id },
+            title = { Text("Расписание заканчивается") },
+            text = {
+                Text(
+                    "Приём «${currentExpiry.medication.name}» заканчивается $endDateStr. " +
+                    "Продлить расписание на 30 дней?"
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.extendSchedule(currentExpiry, days = 30)
+                    dismissedIds = dismissedIds + currentExpiry.schedule.id
+                }) {
+                    Text("Продлить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { dismissedIds = dismissedIds + currentExpiry.schedule.id }) {
+                    Text("Пропустить")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Tabl") },
                 actions = {
+                    IconButton(onClick = onOpenUpcoming) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = "Расписание")
+                    }
                     IconButton(onClick = onOpenHistory) {
                         Icon(Icons.Default.History, contentDescription = "История")
                     }

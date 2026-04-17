@@ -74,4 +74,19 @@ class MedicationRepository @Inject constructor(
 
     suspend fun getAllActiveSchedules(): List<Schedule> =
         scheduleDao.getAllActiveSchedules().map { it.toDomain() }
+
+    fun getAllActiveSchedulesFlow(): Flow<List<Schedule>> =
+        scheduleDao.getAllActiveSchedulesFlow().map { list -> list.map { it.toDomain() } }
+
+    fun getExpiringSchedules(withinDays: Int = 7): Flow<List<Schedule>> {
+        val today = java.time.LocalDate.now()
+        val threshold = today.plusDays(withinDays.toLong())
+        return scheduleDao.getExpiringSchedules(today.toString(), threshold.toString())
+            .map { list -> list.map { it.toDomain() } }
+    }
+
+    suspend fun extendScheduleEndDate(schedule: Schedule, days: Int) {
+        val newEnd = (schedule.endDate ?: java.time.LocalDate.now()).plusDays(days.toLong())
+        scheduleDao.update(schedule.copy(endDate = newEnd).toEntity())
+    }
 }

@@ -19,6 +19,17 @@ interface ScheduleDao {
     @Query("SELECT s.* FROM schedules s JOIN medications m ON s.medication_id = m.id WHERE m.is_active = 1")
     suspend fun getAllActiveSchedules(): List<ScheduleEntity>
 
+    @Query("SELECT s.* FROM schedules s JOIN medications m ON s.medication_id = m.id WHERE m.is_active = 1")
+    fun getAllActiveSchedulesFlow(): Flow<List<ScheduleEntity>>
+
+    @Query("""
+        SELECT * FROM schedules
+        WHERE end_date IS NOT NULL
+        AND end_date >= :today
+        AND end_date <= :threshold
+    """)
+    fun getExpiringSchedules(today: String, threshold: String): Flow<List<ScheduleEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(schedule: ScheduleEntity): Long
 

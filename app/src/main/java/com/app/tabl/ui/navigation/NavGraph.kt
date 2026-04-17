@@ -10,6 +10,7 @@ import com.app.tabl.ui.add.AddMedicationScreen
 import com.app.tabl.ui.history.HistoryScreen
 import com.app.tabl.ui.home.HomeScreen
 import com.app.tabl.ui.settings.SettingsScreen
+import com.app.tabl.ui.upcoming.UpcomingScreen
 
 object Routes {
     const val HOME = "home"
@@ -17,6 +18,7 @@ object Routes {
     const val EDIT_MEDICATION = "edit_medication/{medicationId}"
     const val HISTORY = "history"
     const val SETTINGS = "settings"
+    const val UPCOMING = "upcoming"
 
     fun editMedication(id: Long) = "edit_medication/$id"
 }
@@ -30,7 +32,8 @@ fun TablNavGraph(navController: NavHostController) {
                 onAddMedication = { navController.navigate(Routes.ADD_MEDICATION) },
                 onEditMedication = { id -> navController.navigate(Routes.editMedication(id)) },
                 onOpenHistory = { navController.navigate(Routes.HISTORY) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onOpenUpcoming = { navController.navigate(Routes.UPCOMING) }
             )
         }
 
@@ -56,6 +59,10 @@ fun TablNavGraph(navController: NavHostController) {
 
         composable(Routes.SETTINGS) {
             SettingsScreen(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.UPCOMING) {
+            UpcomingScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }
