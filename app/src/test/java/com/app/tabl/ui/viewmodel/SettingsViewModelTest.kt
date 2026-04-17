@@ -8,6 +8,7 @@ import com.app.tabl.ui.settings.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -63,6 +64,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `setSnooze persists new value`() = runTest {
+        backgroundScope.launch { vm.snoozeMinutes.collect { } }
         vm.setSnooze(30)
         advanceUntilIdle()
         assertEquals(30, vm.snoozeMinutes.value)
@@ -70,6 +72,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `setMaxSnooze persists new value`() = runTest {
+        backgroundScope.launch { vm.maxSnoozeCount.collect { } }
         vm.setMaxSnooze(1)
         advanceUntilIdle()
         assertEquals(1, vm.maxSnoozeCount.value)
@@ -77,6 +80,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `setMaxRepeat persists new value`() = runTest {
+        backgroundScope.launch { vm.maxRepeatCount.collect { } }
         vm.setMaxRepeat(3)
         advanceUntilIdle()
         assertEquals(3, vm.maxRepeatCount.value)
@@ -84,6 +88,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `setTheme dark persists dark`() = runTest {
+        backgroundScope.launch { vm.theme.collect { } }
         vm.setTheme("dark")
         advanceUntilIdle()
         assertEquals("dark", vm.theme.value)
@@ -91,6 +96,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `setTheme light persists light`() = runTest {
+        backgroundScope.launch { vm.theme.collect { } }
         vm.setTheme("light")
         advanceUntilIdle()
         assertEquals("light", vm.theme.value)

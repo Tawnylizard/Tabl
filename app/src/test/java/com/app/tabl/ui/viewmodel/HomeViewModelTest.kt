@@ -11,6 +11,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -34,28 +35,36 @@ class HomeViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun setupDefaultMocks() {
+        every { medicationRepo.getActiveMedications() } returns flowOf(emptyList())
+        every { medicationRepo.getAllMedications() } returns flowOf(emptyList())
+        every { medicationRepo.getExpiringSchedules(any()) } returns flowOf(emptyList())
+    }
+
     @Test
     fun `initial state is Loading`() {
-        every { medicationRepo.getActiveMedications() } returns flowOf(emptyList())
+        setupDefaultMocks()
         val vm = HomeViewModel(medicationRepo, scheduler)
         assertEquals(HomeUiState.Loading, vm.uiState.value)
     }
 
     @Test
     fun `empty list transitions to Empty state`() = runTest {
-        every { medicationRepo.getActiveMedications() } returns flowOf(emptyList())
+        setupDefaultMocks()
         val vm = HomeViewModel(medicationRepo, scheduler)
+        backgroundScope.launch { vm.uiState.collect { } }
         advanceUntilIdle()
         assertEquals(HomeUiState.Empty, vm.uiState.value)
     }
 
     @Test
     fun `non-empty list transitions to Success state`() = runTest {
-        val meds = listOf(
-            Medication(id = 1L, name = "Аспирин", dose = "100мг")
-        )
+        val meds = listOf(Medication(id = 1L, name = "Аспирин", dose = "100мг"))
         every { medicationRepo.getActiveMedications() } returns flowOf(meds)
+        every { medicationRepo.getAllMedications() } returns flowOf(meds)
+        every { medicationRepo.getExpiringSchedules(any()) } returns flowOf(emptyList())
         val vm = HomeViewModel(medicationRepo, scheduler)
+        backgroundScope.launch { vm.uiState.collect { } }
         advanceUntilIdle()
         val state = vm.uiState.value
         assertTrue(state is HomeUiState.Success)
@@ -67,10 +76,13 @@ class HomeViewModelTest {
     fun `delete calls cancel for each schedule then deletes medication`() = runTest {
         val med = Medication(id = 1L, name = "Метформин")
         every { medicationRepo.getActiveMedications() } returns flowOf(listOf(med))
+        every { medicationRepo.getAllMedications() } returns flowOf(listOf(med))
+        every { medicationRepo.getExpiringSchedules(any()) } returns flowOf(emptyList())
         coEvery { medicationRepo.getSchedulesOnce(1L) } returns emptyList()
         coEvery { medicationRepo.deleteMedication(med) } returns Unit
 
         val vm = HomeViewModel(medicationRepo, scheduler)
+        backgroundScope.launch { vm.uiState.collect { } }
         advanceUntilIdle()
         vm.delete(med)
         advanceUntilIdle()

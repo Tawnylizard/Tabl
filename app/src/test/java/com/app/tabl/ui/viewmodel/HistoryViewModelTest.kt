@@ -11,6 +11,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -55,6 +56,8 @@ class HistoryViewModelTest {
         every { logRepo.getLogsForMedication(1L, any(), any()) } returns flowOf(logs)
 
         val vm = HistoryViewModel(logRepo, medicationRepo)
+        backgroundScope.launch { vm.logs.collect { } }
+        backgroundScope.launch { vm.compliancePercent.collect { } }
         vm.selectMedication(1L)
         advanceUntilIdle()
 
@@ -67,6 +70,8 @@ class HistoryViewModelTest {
         every { logRepo.getLogsForMedication(1L, any(), any()) } returns flowOf(logs)
 
         val vm = HistoryViewModel(logRepo, medicationRepo)
+        backgroundScope.launch { vm.logs.collect { } }
+        backgroundScope.launch { vm.compliancePercent.collect { } }
         vm.selectMedication(1L)
         advanceUntilIdle()
 
@@ -79,6 +84,8 @@ class HistoryViewModelTest {
         every { logRepo.getLogsForMedication(1L, any(), any()) } returns flowOf(logs)
 
         val vm = HistoryViewModel(logRepo, medicationRepo)
+        backgroundScope.launch { vm.logs.collect { } }
+        backgroundScope.launch { vm.compliancePercent.collect { } }
         vm.selectMedication(1L)
         advanceUntilIdle()
 
@@ -95,6 +102,8 @@ class HistoryViewModelTest {
         every { logRepo.getLogsForMedication(1L, any(), any()) } returns flowOf(logs)
 
         val vm = HistoryViewModel(logRepo, medicationRepo)
+        backgroundScope.launch { vm.logs.collect { } }
+        backgroundScope.launch { vm.compliancePercent.collect { } }
         vm.selectMedication(1L)
         advanceUntilIdle()
 
@@ -108,6 +117,8 @@ class HistoryViewModelTest {
         every { logRepo.getLogsForMedication(1L, any(), any()) } returns flowOf(logs)
 
         val vm = HistoryViewModel(logRepo, medicationRepo)
+        backgroundScope.launch { vm.logs.collect { } }
+        backgroundScope.launch { vm.compliancePercent.collect { } }
         vm.selectMedication(1L)
         advanceUntilIdle()
         assertEquals(100, vm.compliancePercent.value)
@@ -123,6 +134,7 @@ class HistoryViewModelTest {
         every { medicationRepo.getAllMedications() } returns flowOf(meds)
 
         val vm = HistoryViewModel(logRepo, medicationRepo)
+        backgroundScope.launch { vm.medications.collect { } }
         advanceUntilIdle()
 
         assertEquals(1, vm.medications.value.size)
